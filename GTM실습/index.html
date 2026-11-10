@@ -1560,7 +1560,7 @@ function renderHomeSections() {
   document.getElementById('today-deal-list').innerHTML = deals.map(p => {
     const rate = Math.round((1 - p.price / p.originalPrice) * 100);
     return `
-      <div class="deal-card" data-product-id="${p.id}" data-product-name="${p.name}" data-product-category="${p.category}" data-product-price="${p.price}" data-discount-rate="${rate}" onclick="showProductDetail('${p.id}')">
+      <div class="deal-card" data-product-id="${p.id}" data-product-name="${p.name}" data-product-category="${p.category}" data-product-price="${p.price}" data-discount-rate="${rate}" data-section="특가" onclick="showProductDetail('${p.id}')">
         <span class="deal-flag">${rate}% OFF</span>
         <img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.onerror=null;this.src=FALLBACK_IMG">
         <div class="deal-body">
@@ -1577,7 +1577,7 @@ function renderHomeSections() {
   // 베스트: 리뷰수 상위 5개
   const best = [...PRODUCTS].sort((a,b) => b.reviewCount - a.reviewCount).slice(0, 5);
   document.getElementById('best-product-list').innerHTML = best.map((p, i) => `
-    <div class="best-card" data-product-id="${p.id}" data-product-name="${p.name}" data-product-category="${p.category}" data-product-price="${p.price}" data-rank="${i+1}" onclick="showProductDetail('${p.id}')">
+    <div class="best-card" data-product-id="${p.id}" data-product-name="${p.name}" data-product-category="${p.category}" data-product-price="${p.price}" data-rank="${i+1}" data-section="베스트" onclick="showProductDetail('${p.id}')">
       <span class="best-rank">${i+1}</span>
       <img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.onerror=null;this.src=FALLBACK_IMG">
       <div class="best-body">
@@ -1600,6 +1600,8 @@ function renderHomeSections() {
         <span class="product-price">${p.price.toLocaleString()}원</span>
       </div>
     </div>`).join('');
+
+  observeSectionItems();
 }
 
 // ── 특가 카운트다운 (자정 마감) ──
@@ -1611,6 +1613,42 @@ function tickDealTimer() {
   const mm = String(Math.floor(s%3600/60)).padStart(2,'0');
   const ss = String(s%60).padStart(2,'0');
   document.getElementById('deal-timer').textContent = `마감까지 ${hh}:${mm}:${ss}`;
+}
+
+// ── GA4 이벤트 전송 (텍소노미 기준) ──
+function trackEvent(name, params) {
+  if (typeof gtag === 'function') gtag('event', name, params);
+}
+
+// item_view: 메인 특가/베스트 영역의 제품이 50% 이상 노출되면 1회 전송
+let sectionViewObserver = null;
+function observeSectionItems() {
+  if (!('IntersectionObserver' in window)) return;
+  if (!sectionViewObserver) {
+    sectionViewObserver = new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (!en.isIntersecting || en.target.dataset.viewTracked) return;
+        en.target.dataset.viewTracked = 'true';
+        trackEvent('item_view', { item_name: en.target.dataset.productName, section: en.target.dataset.section });
+      });
+    }, { threshold: 0.5 });
+  }
+  document.querySelectorAll('[data-section]:not([data-view-tracked])').forEach(el => sectionViewObserver.observe(el));
+}
+
+// item_click / promotion_click: 메인 영역 클릭
+document.addEventListener('click', e => {
+  const card = e.target.closest('[data-section]');
+  if (card) trackEvent('item_click', { item_name: card.dataset.productName, section: card.dataset.section });
+  if (e.target.closest('#event-banner-summer')) trackEvent('promotion_click', { promotion_name: '시원 할인 프로모션' });
+});
+
+// add_to_cart / purchase: 상품 상세 페이지 버튼
+function trackDetailEvent(name, productId) {
+  const product = PRODUCTS.find(p => p.id === productId);
+  if (!product) return;
+  const variant = getVariant(product, selectedVariantId);
+  trackEvent(name, { item_name: product.name, item_option: variant.label, value: variant.price * detailQty });
 }
 
 // ── 상품 노출 추적용 클래스 부여 (IntersectionObserver) ──
@@ -1824,6 +1862,7 @@ function switchDetailTab(tab, btn) {
 }
 
 function buyNow(productId) {
+  trackDetailEvent('purchase', productId);
   addToCart(productId, detailQty, true, selectedVariantId);
   goCheckout();
 }
@@ -1872,6 +1911,7 @@ function syncDetailPrice() {
 }
 
 function addToCartFromDetail(productId) {
+  trackDetailEvent('add_to_cart', productId);
   addToCart(productId, detailQty, false, selectedVariantId);
 }
 
