@@ -419,13 +419,6 @@
     .banner-dot.is-active::after { background: white; transform: translate(-50%,-50%) scale(1.3); }
   }
   </style>
-<!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-PR6GC75M');</script>
-<!-- End Google Tag Manager -->
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-16308283743"></script>
 <script>
@@ -437,10 +430,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google tag -->
 </head>
 <body>
-<!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PR6GC75M"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
 
 
 <!-- ══ HEADER ══ -->
@@ -1636,11 +1625,20 @@ function observeSectionItems() {
   document.querySelectorAll('[data-section]:not([data-view-tracked])').forEach(el => sectionViewObserver.observe(el));
 }
 
-// item_click / promotion_click: 메인 영역 클릭
+// item_click / promotion_click / go_to_wishlist: 클릭
 document.addEventListener('click', e => {
   const card = e.target.closest('[data-section]');
   if (card) trackEvent('item_click', { item_name: card.dataset.productName, section: card.dataset.section });
   if (e.target.closest('#event-banner-summer')) trackEvent('promotion_click', { promotion_name: '시원 할인 프로모션' });
+  if (e.target.closest('#btn-wishlist-header')) {
+    const pageType = document.body.getAttribute('data-page-type') || 'home';
+    trackEvent('go_to_wishlist', {
+      click_location: 'header',
+      page_type: pageType === 'product' ? 'product_detail' : pageType.replace(/-/g, '_'),
+      wishlist_count: wishlist.length,
+      login_status: currentUser ? 'logged_in' : 'logged_out',
+    });
+  }
 });
 
 // add_to_cart / purchase: 상품 상세 페이지 버튼
