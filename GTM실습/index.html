@@ -1118,7 +1118,8 @@ function isWished(id) { return wishlist.includes(id); }
 function toggleWishlist(productId, event) {
   if (event) event.stopPropagation();
   const p = PRODUCTS.find(x => x.id === productId);
-  if (isWished(productId)) {
+  const wasWished = isWished(productId);
+  if (wasWished) {
     wishlist = wishlist.filter(id => id !== productId);
     showToast('찜 목록에서 제거했습니다');
   } else {
@@ -1127,6 +1128,17 @@ function toggleWishlist(productId, event) {
   }
   saveWishlist();
   updateWishlistCount();
+  // 상품 상세의 하트 버튼만 추적 (add_to_wishlist / remove_from_wishlist)
+  if (p && event && event.currentTarget && event.currentTarget.id === 'btn-wishlist-detail') {
+    trackEvent(wasWished ? 'remove_from_wishlist' : 'add_to_wishlist', {
+      item_name: p.name,
+      value: p.price,
+      item_category: p.category,
+      click_location: 'product_detail',
+      wishlist_count: wishlist.length,
+      login_status: currentUser ? 'logged_in' : 'logged_out',
+    });
+  }
   document.querySelectorAll('.btn-wishlist[data-product-id="' + productId + '"], #btn-wishlist-detail').forEach(btn => {
     if (btn.dataset.productId === productId) {
       btn.classList.toggle('is-active', isWished(productId));
